@@ -7,7 +7,7 @@ from geopy.geocoders import Nominatim
 
 # Set page configuration
 st.set_page_config(
-    page_title="Explore India - TouristDestinations",
+    page_title="Explore India - Tourist Destinations",
     page_icon="🌍",
     layout="wide"
 )
@@ -15,13 +15,13 @@ st.set_page_config(
 # Custom CSS for better styling and improved contrast
 st.markdown("""
 <style>
-    /* Dark background for the whole app and light text for contrast */
+  
     .stApp {
-        background-color: #0f172a !important; /* very dark blue-gray */
-        color: #e6eef8 !important; /* light, slightly blue-tinted */
+        background-color: #0f172a !important; 
+        color: #e6eef8 !important; 
     }
 
-    /* Make most text elements use the light color */
+   
     .stApp * {
         color: #e6eef8 !important;
     }
@@ -36,7 +36,7 @@ st.markdown("""
         box-shadow: 0 2px 6px rgba(0,0,0,0.6);
     }
 
-    /* Buttons: more visible call-to-action */
+  
     .stButton>button {
         background-color: #2563eb !important; /* blue */
         color: #ffffff !important;
@@ -45,7 +45,7 @@ st.markdown("""
         box-shadow: 0 2px 6px rgba(37,99,235,0.3) !important;
     }
 
-    /* Inputs: make them darker with light text */
+    /* Inputs*/
     .stTextInput>div>div>input,
     .stSelectbox>div>div>div>div{
         background-color: #071021 !important;
@@ -54,13 +54,13 @@ st.markdown("""
         border-radius: 8px !important;
     }
 
-    /* Headers and subheaders larger and bold for readability */
+    /* Headers */
     h1, h2, h3, .css-ffhzg2 {
         color: #f8fafc !important;
         font-weight: 700 !important;
     }
 
-    /* Expander header background and color */
+    /* Expander header */
     .stExpander > button {
         background-color: #0b1220 !important;
         color: #e6eef8 !important;
@@ -121,16 +121,16 @@ def load_data():
         if rename_map:
             df.rename(columns=rename_map, inplace=True)
 
-        # Ensure minimal required columns exist
+        #
         required_columns = ['name', 'state']
         missing_required = [c for c in required_columns if c not in df.columns]
         if missing_required:
             st.error(f"Error: Required column(s) not found in CSV file: {missing_required}. Available columns: {', '.join(df.columns)}")
             return None
 
-        # Provide fallback/defaults for optional columns the app expects
+        
         if 'description' not in df.columns:
-            # Try to populate description from 'significance' or 'type' if available
+           
             if 'significance' in df.columns:
                 df['description'] = df['significance']
             elif 'type' in df.columns:
