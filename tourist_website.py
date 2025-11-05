@@ -12,28 +12,71 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS for better styling
+# Custom CSS for better styling and improved contrast
 st.markdown("""
 <style>
+    /* Dark background for the whole app and light text for contrast */
     .stApp {
-        background-color: #f5f5f5;
+        background-color: #0f172a !important; /* very dark blue-gray */
+        color: #e6eef8 !important; /* light, slightly blue-tinted */
     }
+
+    /* Make most text elements use the light color */
+    .stApp * {
+        color: #e6eef8 !important;
+    }
+
+    /* Card styles */
     .destination-card {
-        background-color: white;
+        background-color: #0b1220 !important; /* darker card */
+        color: #e6eef8 !important;
         border-radius: 10px;
         padding: 20px;
         margin-bottom: 20px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.6);
     }
+
+    /* Buttons: more visible call-to-action */
     .stButton>button {
-        background-color: #4CAF50;
-        color: white;
-        border-radius: 5px;
-        padding: 0.5rem 1rem;
+        background-color: #2563eb !important; /* blue */
+        color: #ffffff !important;
+        border-radius: 6px !important;
+        padding: 0.5rem 1rem !important;
+        box-shadow: 0 2px 6px rgba(37,99,235,0.3) !important;
     }
-    .stTextInput>div>div>input {
-        border-radius: 20px;
+
+    /* Inputs: make them darker with light text */
+    .stTextInput>div>div>input,
+    .stSelectbox>div>div>div>div{
+        background-color: #071021 !important;
+        color: #e6eef8 !important;
+        border: 1px solid rgba(255,255,255,0.06) !important;
+        border-radius: 8px !important;
     }
+
+    /* Headers and subheaders larger and bold for readability */
+    h1, h2, h3, .css-ffhzg2 {
+        color: #f8fafc !important;
+        font-weight: 700 !important;
+    }
+
+    /* Expander header background and color */
+    .stExpander > button {
+        background-color: #0b1220 !important;
+        color: #e6eef8 !important;
+        border-radius: 6px !important;
+    }
+
+    /* Map container adjustments */
+    .stFrame > iframe {
+        border-radius: 8px !important;
+    }
+
+    /* Ensure small text remains legible */
+    .stCaption, .stMarkdown, .stText {
+        color: #dbeafe !important;
+    }
+
 </style>
 """, unsafe_allow_html=True)
 
