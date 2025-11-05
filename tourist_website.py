@@ -169,7 +169,7 @@ def load_data():
 
 
 def main():
-    st.title("🌍 Explore India - TouristDestinations")
+    st.title("🌍 Explore India - Tourist Destinations")
     st.write("Discover the most amazing places to visit in India")
 
     # Load data
