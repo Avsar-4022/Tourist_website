@@ -138,12 +138,9 @@ def main():
     filtered_df = df.copy()
     
     if search_query:
-        mask = (
-            df['name'].str.contains(search_query, case=False, na=False) |
-            df['description'].str.contains(search_query, case=False, na=False) |
-            df['popular_attractions'].str.contains(search_query, case=False, na=False)
-        )
-        filtered_df = filtered_df[mask]
+        mask = ( (df['name'].str.contains(search_query, case=False, na=False)) | (df['description'].str.contains(search_query, case=False, na=False)) | (df['popular_attractions'].str.contains(search_query, case=False, na=False)) )
+
+filtered_df = filtered_df.loc[mask]
     
     if selected_state != 'All':
         filtered_df = filtered_df[filtered_df['state'] == selected_state]
