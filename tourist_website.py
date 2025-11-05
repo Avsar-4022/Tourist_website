@@ -41,12 +41,8 @@ st.markdown("""
 @st.cache_data
 def load_data():
     """
-    Robust CSV loader:
-    - Accepts common header variations (Name, destination, Destination, lat, lng, etc.)
-    - Strips BOM, trims whitespace, normalizes headers to lowercase with underscores
-    - Attempts to map synonyms to the standard columns used in the app:
-      name, state, description, popular_attractions, image_url, latitude, longitude
-    - Shows an error with available columns if required columns are missing
+    Robust CSV loader that maps existing CSV headers to the app's expected columns.
+    It tolerates the repo's current columns by mapping 'significance' -> description and 'type' -> popular_attractions.
     """
     try:
         df = pd.read_csv('destinations.csv', encoding='utf-8-sig')
@@ -56,12 +52,15 @@ def load_data():
         norm_cols = [str(c).strip().lower().replace(' ', '_') for c in orig_cols]
         df.rename(columns=dict(zip(orig_cols, norm_cols)), inplace=True)
 
-        # Synonyms for common alternate headers
+        # Drop any unnamed index column (common when saving CSVs with index)
+        df = df.loc[:, ~df.columns.str.startswith('unnamed')]
+
+        # Synonyms for common alternate headers (extended to match your CSV)
         synonyms = {
             'name': ['name', 'destination', 'place', 'title', 'location'],
             'state': ['state', 'region', 'province'],
-            'description': ['description', 'desc', 'details', 'about'],
-            'popular_attractions': ['popular_attractions', 'attractions', 'popular_attraction', 'attraction'],
+            'description': ['description', 'desc', 'details', 'about', 'significance'],
+            'popular_attractions': ['popular_attractions', 'attractions', 'popular_attraction', 'attraction', 'type'],
             'image_url': ['image_url', 'image', 'image_link', 'imageurl', 'photo', 'photo_url'],
             'latitude': ['latitude', 'lat'],
             'longitude': ['longitude', 'lon', 'long', 'lng']
@@ -75,22 +74,35 @@ def load_data():
                     found[canonical] = opt
                     break
 
-        # Rename any found synonym column to the canonical name
         rename_map = {found[k]: k for k in found}
         if rename_map:
             df.rename(columns=rename_map, inplace=True)
 
-        # Required columns for normal operation
-        required_columns = ['name', 'state', 'description', 'popular_attractions', 'image_url']
-        missing = [c for c in required_columns if c not in df.columns]
-
-        if missing:
-            st.error(
-                "Error: Required column(s) not found in CSV file: "
-                f"{missing}. Available columns: {', '.join(df.columns)}. "
-                "You can either rename your CSV headers to include these or use the app's expected names."
-            )
+        # Ensure minimal required columns exist
+        required_columns = ['name', 'state']
+        missing_required = [c for c in required_columns if c not in df.columns]
+        if missing_required:
+            st.error(f"Error: Required column(s) not found in CSV file: {missing_required}. Available columns: {', '.join(df.columns)}")
             return None
+
+        # Provide fallback/defaults for optional columns the app expects
+        if 'description' not in df.columns:
+            # Try to populate description from 'significance' or 'type' if available
+            if 'significance' in df.columns:
+                df['description'] = df['significance']
+            elif 'type' in df.columns:
+                df['description'] = df['type']
+            else:
+                df['description'] = ''
+
+        if 'popular_attractions' not in df.columns:
+            if 'type' in df.columns:
+                df['popular_attractions'] = df['type']
+            else:
+                df['popular_attractions'] = ''
+
+        if 'image_url' not in df.columns:
+            df['image_url'] = ''
 
         # Drop rows missing essential info
         df = df.dropna(subset=['name', 'state'])
@@ -190,8 +202,7 @@ def main():
                 c1, c2 = st.columns([1, 2])
 
                 with c1:
-                    # Use a placeholder image if image_url is missing or invalid
-                    img = row.get('image_url') if pd.notnull(row.get('image_url')) else None
+                    img = row.get('image_url') if pd.notnull(row.get('image_url')) and row.get('image_url') else None
                     if img:
                         st.image(img, use_column_width=True, caption=row['name'])
                     else:
@@ -200,13 +211,12 @@ def main():
                 with c2:
                     st.write(f"**State:** {row['state']}")
                     st.write(f"**Description:** {row['description']}")
-                    if 'popular_attractions' in row and pd.notnull(row['popular_attractions']):
+                    if 'popular_attractions' in row and pd.notnull(row['popular_attractions']) and row['popular_attractions']:
                         st.write("**Popular Attractions:**")
-                        attractions = [a.strip() for a in str(row['popular_attractions']).split(',')]
+                        attractions = [a.strip() for a in str(row['popular_attractions']).split(',') if a.strip()]
                         for attraction in attractions:
                             st.write(f"- {attraction}")
 
-                    # Add a button to view on map (example)
                     if 'latitude' in row and 'longitude' in row and pd.notnull(row['latitude']) and pd.notnull(row['longitude']):
                         st.button(
                             f"View on Map",
