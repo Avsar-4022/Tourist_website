@@ -40,19 +40,76 @@ st.markdown("""
 # Load data
 @st.cache_data
 def load_data():
+    """
+    Robust CSV loader:
+    - Accepts common header variations (Name, destination, Destination, lat, lng, etc.)
+    - Strips BOM, trims whitespace, normalizes headers to lowercase with underscores
+    - Attempts to map synonyms to the standard columns used in the app:
+      name, state, description, popular_attractions, image_url, latitude, longitude
+    - Shows an error with available columns if required columns are missing
+    """
     try:
-        df = pd.read_csv('destinations.csv')
-        # Ensure required columns exist
+        # Try common encodings and strip BOM if present
+        df = pd.read_csv('destinations.csv', encoding='utf-8-sig')
+
+        # Normalize column names: strip, lower, replace spaces with _
+        orig_cols = list(df.columns)
+        norm_cols = [str(c).strip().lower().replace(' ', '_') for c in orig_cols]
+        df.rename(columns=dict(zip(orig_cols, norm_cols)), inplace=True)
+
+        # Synonyms for common alternate headers
+        synonyms = {
+            'name': ['name', 'destination', 'place', 'title', 'location'],
+            'state': ['state', 'region', 'province'],
+            'description': ['description', 'desc', 'details', 'about'],
+            'popular_attractions': ['popular_attractions', 'attractions', 'popular_attraction', 'attraction'],
+            'image_url': ['image_url', 'image', 'image_link', 'imageurl', 'photo', 'photo_url'],
+            'latitude': ['latitude', 'lat'],
+            'longitude': ['longitude', 'lon', 'long', 'lng']
+        }
+
+        # Find and rename columns to the canonical names used in the app
+        found = {}
+        for canonical, options in synonyms.items():
+            for opt in options:
+                if opt in df.columns:
+                    found[canonical] = opt
+                    break
+
+        # Rename any found synonym column to the canonical name
+        rename_map = {found[k]: k for k in found}
+        if rename_map:
+            df.rename(columns=rename_map, inplace=True)
+
+        # Required columns for normal operation
         required_columns = ['name', 'state', 'description', 'popular_attractions', 'image_url']
-        
-        for col in required_columns:
-            if col not in df.columns:
-                st.error(f"Error: Required column '{col}' not found in CSV file.")
-                return None
-                
-        # Clean and prepare data
+        missing = [c for c in required_columns if c not in df.columns]
+
+        if missing:
+            # Give a helpful error message listing available columns so the user can fix CSV
+            st.error(
+                "Error: Required column(s) not found in CSV file: "
+                f"{missing}. Available columns: {', '.join(df.columns)}. "
+                "You can either rename your CSV headers to include these or use the app's expected names."
+            )
+            return None
+
+        # Drop rows missing essential info
         df = df.dropna(subset=['name', 'state'])
+
+        # Convert lat/lon to numeric if present
+        for coord in ('latitude', 'longitude'):
+            if coord in df.columns:
+                df[coord] = pd.to_numeric(df[coord], errors='coerce')
+
         return df
+
+    except FileNotFoundError:
+        st.error("destinations.csv not found. Please place destinations.csv in the app directory.")
+        return None
+    except pd.errors.EmptyDataError:
+        st.error("destinations.csv is empty or invalid. Please check the file.")
+        return None
     except Exception as e:
         st.error(f"Error loading data: {str(e)}")
         return None
@@ -81,16 +138,16 @@ def main():
     filtered_df = df.copy()
     
     if search_query:
-        mask = (df['name'].str.contains(search_query, case=False)) | \
-               (df['description'].str.contains(search_query, case=False)) | \
-               (df['popular_attractions'].str.contains(search_query, case=False))
+        mask = (df['name'].str.contains(search_query, case=False, na=False)) | 
+               (df['description'].str.contains(search_query, case=False, na=False)) | 
+               (df['popular_attractions'].str.contains(search_query, case=False, na=False))
         filtered_df = filtered_df[mask]
     
     if selected_state != 'All':
         filtered_df = filtered_df[filtered_df['state'] == selected_state]
     
     # Display results
-    st.header(f"🗺️ {len(filtered_df)}Destinations Found")
+    st.header(f"🗺️ {len(filtered_df)} Destinations Found")
     
     # Create two columns for layout
     col1, col2 = st.columns([2, 1])
@@ -117,27 +174,31 @@ def main():
     with col2:
         # Display filters summary
         st.subheader("🔍 Current Filters")
-        st.write(f"State: **{selected_state if selected_state != 'All' else 'All States'}")
+        st.write(f"State: **{selected_state if selected_state != 'All' else 'All States'}**")
         if search_query:
             st.write(f"Search: **{search_query}**")
     
     # Display destination cards
-    st.subheader("🏞️Destinations")
+    st.subheader("🏞️ Destinations")
     
     if filtered_df.empty:
         st.warning("No destinations found matching your criteria. Try adjusting your filters.")
     else:
         for idx, row in filtered_df.iterrows():
             with st.expander(f"{row['name']}, {row['state']}", expanded=True):
-                col1, col2 = st.columns([1, 2])
+                c1, c2 = st.columns([1, 2])
                 
-                with col1:
-                    st.image(row['image_url'], use_column_width=True, caption=row['name'])
+                with c1:
+                    # Use a placeholder image if image_url is missing or invalid
+                    img = row.get('image_url') if pd.notnull(row.get('image_url')) else None
+                    if img:
+                        st.image(img, use_column_width=True, caption=row['name'])
+                    else:
+                        st.text("No image available")
                 
-                with col2:
-                    st.write(f"**State:** {row['state']}")
-                    st.write(f"**Description:** {row['description']}")
-                    
+                with c2:
+                    st.write(f"**State:** {row['state']}\n")
+                    st.write(f"**Description:** {row['description']}\n")
                     if 'popular_attractions' in row and pd.notnull(row['popular_attractions']):
                         st.write("**Popular Attractions:**")
                         attractions = [a.strip() for a in str(row['popular_attractions']).split(',')]
@@ -149,7 +210,7 @@ def main():
                         st.button(
                             f"View on Map", 
                             key=f"btn_{idx}",
-                            on_click=None,  # You can add a callback function here
+                            on_click=None,
                             help=f"Show {row['name']} on the map"
                         )
 
