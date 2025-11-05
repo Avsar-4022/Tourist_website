@@ -3,6 +3,7 @@ import pandas as pd
 import folium
 from streamlit_folium import folium_static
 import os
+from geopy.geocoders import Nominatim 
 
 # Set page configuration
 st.set_page_config(
